@@ -45,6 +45,8 @@ def main():
             print("Число просмотров:", clicks_count['response']['stats'][0]['views'])
         except KeyError:
             print(clicks_count['error']['error_msg'])
+        except IndexError:
+            print("Никто пока не переходил по вашей ссылке")
     else:
         try:
             short_link = shorten_link(link, token)
@@ -69,3 +71,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
