@@ -1,74 +1,41 @@
 import requests
-import decouple
-import argparse
 import urllib.parse
-import sys
-
-
-def shorten_link(url, access_token):
-    payload = {
-        "url": url,
-        "private": 0,
-        "access_token": access_token,
-        "v": 5.199
-    }
-    short_url = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
-    return short_url.json()
-
-
-def count_clicks(key, token):
-    payload = {
-        "key": key,
-        "access_token": token,
-        "v": 5.199
-    }
-    clicks = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
-    return clicks.json()
-
-
-def is_shorten_link(url):
-    parsed = urllib.parse.urlparse(url)
-    if parsed.netloc == 'vk.cc':
-        return True
+import argparse
 
 
 def main():
-    token = decouple.config('TOKEN')
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', "--link", type=str)
+    parser.add_argument('-hs', "--host",
+                        type=str,
+                        help="url",
+                        default="https://wttr.in")
+    parser.add_argument('-p', "--places",
+                        type=str,
+                        help="places",
+                        nargs='*',
+                        default=['svo'])
+    parser.add_argument('-k', "--keys",
+                        type=str,
+                        help="key=value pairs",
+                        nargs='*')
     args = parser.parse_args()
-    link = args.link
+    host = args.host
+    places = args.places
+    keys = args.keys
+    if keys:
+        keys = dict(key.split('=') for key in keys)
 
-    if is_shorten_link(link):
-        clicks_count = count_clicks(link[14:], token)
+    for place in places:
         try:
-            print("Число просмотров:", clicks_count['response']['stats'][0]['views'])
-        except KeyError:
-            print(clicks_count['error']['error_msg'])
-        except IndexError:
-            print("Никто пока не переходил по вашей ссылке")
-    else:
-        try:
-            short_link = shorten_link(link, token)
-        except requests.exceptions.HTTPError:
-            print(short_link.status_code)
-        try:
-            print('Сокращенная ссылка:', short_link['response']['short_url'])
-            key = urllib.parse.urlparse(short_link['response']['short_url'])
-            key = key.path[1:]
-        except KeyError:
-            print(short_link['error']['error_msg'])
-            sys.exit()
-
-        clicks_count = count_clicks(key, token)
-        try:
-            print("Число просмотров:", clicks_count['response']['stats'][0]['views'])
-        except KeyError:
-            print(clicks_count['error']['error_msg'])
-        except IndexError:
-            print("Никто пока не переходил по вашей ссылке")
+            response = requests.get(urllib.parse.urljoin(host, place), params=keys)
+        except requests.exceptions.ConnectionError:
+            print("The host name contains errors or is written in an invalid format")
+            break
+        if not response.ok:
+            print(response.status_code)
+        else:
+            print(response.text)
 
 
 if __name__ == '__main__':
     main()
-
