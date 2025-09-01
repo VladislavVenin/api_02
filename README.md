@@ -11,7 +11,7 @@ pip install python-decouple==3.8
 ## Использование
 При запуске скрипта требуется указать ссылку с ключом `-l` или `--link`. 
 ```
-python main.py https://www.google.com/
+python main.py -l https://www.google.com/
 ```
 <img width="477" height="60" alt="image" src="https://github.com/user-attachments/assets/c4d16e86-88b3-4b2e-ae9a-47c424acfd3b" />
 
