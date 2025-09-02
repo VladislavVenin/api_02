@@ -1,8 +1,6 @@
 import requests
 import decouple
-import argparse
 import urllib.parse
-import sys
 
 
 def shorten_link(url, access_token):
@@ -12,8 +10,14 @@ def shorten_link(url, access_token):
         "access_token": access_token,
         "v": 5.199
     }
-    short_url = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
-    return short_url
+    try:
+        short_url = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
+    except requests.exceptions.HTTPError:
+        return short_url.status_code
+    try:
+        return short_url.json()['response']['short_url']
+    except KeyError:
+        return short_url.json()['error']['error_code']
 
 
 def count_clicks(key, token):
@@ -22,64 +26,36 @@ def count_clicks(key, token):
         "access_token": token,
         "v": 5.199
     }
-    clicks = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
-    return clicks
+    try:
+        clicks = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
+    except requests.exceptions.HTTPError:
+        return clicks.status_code
+    try:
+        return clicks.json()['response']['stats'][0]['views']
+    except KeyError:
+        return clicks.json()['error']['error_msg']
+    except IndexError:
+        print("Никто пока не переходил по вашей ссылке")
 
 
 def is_shorten_link(url):
-    parsed = urllib.parse.urlparse(url)
-    if parsed.netloc == 'vk.cc':
+    check = shorten_link(url, decouple.config('TOKEN'))
+    if check == 100:
+        return False
+    else:
         return True
 
 
 def main():
     token = decouple.config('TOKEN')
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-l', "--link", type=str)
-    args = parser.parse_args()
-    link = args.link
+    link = input("Введите вашу ссылку: ")
+    parsed_url = urllib.parse.urlparse(link)
+    key = parsed_url.path[1:]
 
-    if is_shorten_link(link):
-        try:
-            clicks_count = count_clicks(link[14:], token)
-        except requests.exceptions.HTTPError:
-            print(clicks_count.status_code)
-            sys.exit()
-        clicks_count = clicks_count.json()
-        try:
-            print("Число просмотров:", clicks_count['response']['stats'][0]['views'])
-        except KeyError:
-            print(clicks_count['error']['error_msg'])
-        except IndexError:
-            print("Никто пока не переходил по вашей ссылке")
-
+    if not is_shorten_link(link):
+        print(count_clicks(key, token))
     else:
-        try:
-            short_link = shorten_link(link, token)
-        except requests.exceptions.HTTPError:
-            print(short_link.status_code)
-            sys.exit()
-        short_link = short_link.json()
-        try:
-            print('Сокращенная ссылка:', short_link['response']['short_url'])
-            key = urllib.parse.urlparse(short_link['response']['short_url'])
-            key = key.path[1:]
-        except KeyError:
-            print(short_link['error']['error_msg'])
-            sys.exit()
-
-        try:
-            clicks_count = count_clicks(key, token)
-        except requests.exceptions.HTTPError:
-            print(clicks_count.status_code)
-            sys.exit()
-        clicks_count = clicks_count.json()
-        try:
-            print("Число просмотров:", clicks_count['response']['stats'][0]['views'])
-        except KeyError:
-            print(clicks_count['error']['error_msg'])
-        except IndexError:
-            print("Никто пока не переходил по вашей ссылке")
+        print(shorten_link(link, token))
 
 
 if __name__ == '__main__':
