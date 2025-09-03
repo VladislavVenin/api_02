@@ -1,6 +1,7 @@
 import requests
 import decouple
 import urllib.parse
+import sys
 
 
 def shorten_link(url, access_token):
@@ -10,14 +11,13 @@ def shorten_link(url, access_token):
         "access_token": access_token,
         "v": 5.199
     }
-    try:
-        short_url = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
-    except requests.exceptions.HTTPError:
-        return short_url.status_code
-    try:
-        return short_url.json()['response']['short_url']
-    except KeyError:
-        return short_url.json()['error']['error_code']
+    response = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
+    response.raise_for_status()
+    json_box = response.json()
+    if 'response' in json_box:
+        return json_box['response']['short_url']
+    else:
+        return json_box['error']['error_code']
 
 
 def count_clicks(key, token):
@@ -26,24 +26,22 @@ def count_clicks(key, token):
         "access_token": token,
         "v": 5.199
     }
-    try:
-        clicks = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
-    except requests.exceptions.HTTPError:
-        return clicks.status_code
-    try:
-        return clicks.json()['response']['stats'][0]['views']
-    except KeyError:
-        return clicks.json()['error']['error_msg']
-    except IndexError:
-        print("Никто пока не переходил по вашей ссылке")
-
-
-def is_shorten_link(url):
-    check = shorten_link(url, decouple.config('TOKEN'))
-    if check == 100:
-        return False
+    response = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
+    response.raise_for_status()
+    json_box = response.json()
+    if 'response' in json_box:
+        return json_box['response']['stats'][0]['views']
     else:
+        return json_box['error']['error_msg']
+
+
+def is_shorten_link(url, token):
+    error_code = 100
+    check = shorten_link(url, token)
+    if check == error_code:
         return True
+    else:
+        return False
 
 
 def main():
@@ -52,10 +50,16 @@ def main():
     parsed_url = urllib.parse.urlparse(link)
     key = parsed_url.path[1:]
 
-    if not is_shorten_link(link):
-        print(count_clicks(key, token))
+    if is_shorten_link(link, token):
+        try:
+            count = count_clicks(key, token)
+        except IndexError:
+            print("Никто пока не переходил по вашей ссылке")
+            sys.exit()
+        print(count)
     else:
-        print(shorten_link(link, token))
+        short_link = shorten_link(link, token)
+        print(short_link)
 
 
 if __name__ == '__main__':
