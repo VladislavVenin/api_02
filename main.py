@@ -13,11 +13,11 @@ def shorten_link(url, access_token):
     }
     response = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
     response.raise_for_status()
-    json_box = response.json()
-    if 'response' in json_box:
-        return json_box['response']['short_url']
+    response_json = response.json()
+    if 'response' in response_json:
+        return response_json['response']['short_url']
     else:
-        return json_box['error']['error_code']
+        return response_json['error']['error_code']
 
 
 def count_clicks(key, token):
@@ -28,25 +28,23 @@ def count_clicks(key, token):
     }
     response = requests.get("https://api.vk.ru/method/utils.getLinkStats", params=payload)
     response.raise_for_status()
-    json_box = response.json()
-    if 'response' in json_box:
-        return json_box['response']['stats'][0]['views']
-    else:
-        return json_box['error']['error_msg']
+    response_json = response.json()
+    return response_json['response']['stats'][0]['views']
 
 
 def is_shorten_link(url, token):
     error_code = 100
     check = shorten_link(url, token)
-    if check == error_code:
-        return True
-    else:
-        return False
+    return check == error_code
 
 
 def main():
     token = decouple.config('TOKEN')
     link = input("Введите вашу ссылку: ")
+    while not link:
+        print("Вы не указали ссылку")
+        link = input("Введите вашу ссылку: ")
+
     parsed_url = urllib.parse.urlparse(link)
     key = parsed_url.path[1:]
 
