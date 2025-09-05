@@ -13,10 +13,10 @@ def shorten_link(url, access_token):
     }
     response = requests.get("https://api.vk.ru/method/utils.getShortLink", params=payload)
     response.raise_for_status()
-    dict_response = response.json()
-    if 'response' in dict_response:
-        return dict_response['response']['short_url']
-    return dict_response['error']['error_code']
+    api_response = response.json()
+    if 'response' in api_response:
+        return api_response['response']['short_url']
+    return api_response['error']['error_code']
 
 
 def count_clicks(key, token):
